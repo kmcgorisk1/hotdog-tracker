@@ -1,0 +1,41 @@
+name: Hotdog Tracker
+
+on:
+  schedule:
+    - cron: "23 9 * * *"   # every morning around 4:23 AM Eastern (GitHub sometimes runs it late)
+  workflow_dispatch:        # adds a "Run workflow" button for a manual refresh
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: hotdog-pages
+  cancel-in-progress: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Get the tracker files
+        uses: actions/checkout@v6
+
+      - name: Pull ESPN data and run the odds
+        env:
+          LEAGUE_ID: ${{ secrets.LEAGUE_ID }}
+          ESPN_S2: ${{ secrets.ESPN_S2 }}
+          ESPN_SWID: ${{ secrets.ESPN_SWID }}
+        run: python3 tracker.py
+
+      - name: Package the page
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+      - name: Publish to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
