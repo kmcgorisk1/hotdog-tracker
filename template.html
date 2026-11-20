@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>🌭 Hotdog Tracker · __LEAGUE_NAME__</title>
+<meta name="description" content="__OG_DESC__">
+<meta property="og:type" content="website">
+<meta property="og:title" content="🌭 Hotdog Tracker · __LEAGUE_NAME__">
+<meta property="og:description" content="__OG_DESC__">
+<meta name="twitter:card" content="summary">
+<meta name="theme-color" content="#eda100">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌭</text></svg>">
+<style>
+:root {
+  color-scheme: light;
+  --page: #f6efdc;
+  --surface: #fcfcfb;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #6f6d68;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgba(11,11,11,.10);
+  --masthead: #eda100;
+  --ketchup: #e34948;
+  --ketchup-track: #f6dcd8;
+  --bun: #f1d49a;
+  --other: #cfcdc6;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+  --good: #0ca30c; --good-text: #006300; --critical: #d03b3b;
+  --chip: #f1eee6;
+  --shadow: 0 1px 2px rgba(11,11,11,.05), 0 6px 20px rgba(11,11,11,.06);
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --ink: #f0efec;
+    --ink-2: #c3c2b7;
+    --muted: #9c9a93;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --border: rgba(255,255,255,.10);
+    --masthead: #c98500;
+    --ketchup: #e66767;
+    --ketchup-track: #3b2524;
+    --bun: #6b5430;
+    --other: #4a4a46;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+    --good-text: #0ca30c;
+    --chip: #262624;
+    --shadow: none;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--page); color: var(--ink); font: 15px/1.45 var(--font); -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 760px; margin: 0 auto; padding: 0 14px 40px; }
+
+/* masthead */
+.mast { background: var(--masthead); color: #0b0b0b; position: relative; padding: 22px 0 34px; overflow: hidden; }
+.mast .wrap { padding-bottom: 0; }
+.mast .league { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; opacity: .8; }
+.mast h1 { margin: 4px 0 6px; font-size: clamp(30px, 8vw, 46px); line-height: 1.02; letter-spacing: -.02em; font-weight: 900; }
+.mast .rule { font-size: 15px; font-weight: 500; max-width: 34em; }
+.mast .updated { margin-top: 10px; font-size: 13px; opacity: .85; }
+.squiggle { position: absolute; left: 0; right: 0; bottom: 6px; width: 100%; height: 20px; }
+.mock { background: #0b0b0b; color: #fff; text-align: center; font-size: 13px; font-weight: 700; padding: 8px 12px; letter-spacing: .02em; }
+
+/* cards */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); padding: 18px; margin-top: 16px; }
+.card h2 { font-size: 18px; margin: 0 0 2px; letter-spacing: -.01em; }
+.card .sub { color: var(--ink-2); font-size: 13.5px; margin: 0 0 14px; }
+.eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-2); }
+
+/* hero */
+.hero { margin-top: -18px; position: relative; }
+.hero-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-top: 6px; }
+.hero-team { font-size: clamp(22px, 5.6vw, 30px); font-weight: 800; line-height: 1.1; letter-spacing: -.01em; overflow-wrap: anywhere; }
+.hero-meta { color: var(--ink-2); font-size: 14px; margin-top: 4px; }
+.hero-num { font-size: clamp(52px, 15vw, 72px); font-weight: 800; line-height: .9; letter-spacing: -.03em; }
+.hero-num small { display: block; font-size: 12px; font-weight: 600; letter-spacing: .02em; color: var(--ink-2); text-align: right; margin-top: 6px; }
+.meter { height: 12px; border-radius: 999px; background: var(--ketchup-track); margin-top: 16px; overflow: hidden; }
+.meter span { display: block; height: 100%; background: var(--ketchup); border-radius: 999px; }
+.facts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.fact { background: var(--chip); border-radius: 999px; padding: 5px 11px; font-size: 13px; font-weight: 600; color: var(--ink); }
+.fact.live { background: var(--critical); color: #fff; }
+.fact.live::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #fff; margin-right: 6px; vertical-align: 1px; animation: pulse 1.4s infinite; }
+@keyframes pulse { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .fact.live::before { animation: none; } }
+
+/* plate (waffle of 70 hot dogs) */
+.plate { display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px 4px; max-width: 420px; }
+.dog { width: 100%; height: auto; display: block; cursor: default; outline: none; }
+.dog:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 6px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 14px; font-size: 13.5px; }
+.legend .item { display: inline-flex; align-items: center; gap: 7px; color: var(--ink); }
+.legend .sw { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+.legend .ln { width: 16px; height: 2px; border-radius: 2px; flex: none; }
+.legend b { font-weight: 700; }
+.legend .dim { color: var(--ink-2); }
+
+/* standings */
+.rows { list-style: none; margin: 0; padding: 0; }
+.row { display: grid; grid-template-columns: 26px 1fr 118px; gap: 4px 10px; align-items: center; padding: 12px 4px; border-top: 1px solid var(--grid); cursor: pointer; outline: none; }
+.row:first-child { border-top: 0; }
+.row:hover { background: color-mix(in srgb, var(--ink) 3%, transparent); }
+.row:focus-visible { box-shadow: inset 0 0 0 2px var(--ink); border-radius: 8px; }
+.rank { font-weight: 800; color: var(--ink-2); font-size: 15px; text-align: center; font-variant-numeric: tabular-nums; }
+.who { min-width: 0; }
+.name { font-weight: 700; display: flex; align-items: center; gap: 7px; overflow-wrap: anywhere; }
+.key { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.meta { color: var(--ink-2); font-size: 13px; margin-top: 1px; }
+.chip { display: inline-block; margin-top: 6px; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--chip); color: var(--ink); }
+.chip.doomed { background: var(--critical); color: #fff; }
+.chip.safe { background: color-mix(in srgb, var(--good) 16%, transparent); color: var(--good-text); }
+.odds { text-align: right; }
+.pct { font-weight: 800; font-size: 20px; line-height: 1; font-variant-numeric: tabular-nums; }
+.bar { height: 8px; border-radius: 999px; background: var(--ketchup-track); margin-top: 7px; overflow: hidden; }
+.bar span { display: block; height: 100%; background: var(--ketchup); border-radius: 999px; min-width: 0; }
+.dogs { font-size: 12px; color: var(--ink-2); margin-top: 5px; font-variant-numeric: tabular-nums; }
+.detail { grid-column: 2 / -1; font-size: 13.5px; color: var(--ink-2); background: var(--chip); border-radius: 10px; padding: 10px 12px; margin-top: 6px; }
+.detail b { color: var(--ink); }
+.detail div + div { margin-top: 3px; }
+.hint { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+
+/* matchups */
+.matchups { display: grid; gap: 12px; }
+.mu { border: 1px solid var(--grid); border-radius: 12px; padding: 12px; }
+.mu.bowl { border: 2px solid var(--ketchup); }
+.mu .badge { display: inline-block; font-size: 12px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--ink); background: var(--chip); border-radius: 999px; padding: 2px 9px; margin-bottom: 8px; }
+.mu.bowl .badge { background: var(--ketchup); color: #fff; }
+.mu-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: start; }
+.mu-vs { font-weight: 800; color: var(--muted); padding-top: 2px; font-size: 13px; }
+.side { min-width: 0; }
+.side.right { text-align: right; }
+.side .tn { font-weight: 700; overflow-wrap: anywhere; line-height: 1.25; }
+.side .now { font-size: 13px; color: var(--ink-2); margin-top: 2px; }
+.side .score { font-size: 22px; font-weight: 800; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.side .score small { font-size: 12px; font-weight: 600; color: var(--ink-2); }
+.outcomes { margin-top: 8px; display: grid; gap: 3px; font-size: 13px; }
+.outcomes span { color: var(--ink-2); }
+.outcomes b { font-variant-numeric: tabular-nums; }
+.up { color: var(--critical); }
+.down { color: var(--good-text); }
+
+/* chart */
+.chart-wrap { position: relative; }
+.chart-wrap svg { display: block; width: 100%; overflow: visible; }
+.chart-wrap .overlay { cursor: crosshair; outline: none; }
+.chart-wrap .overlay:focus-visible { stroke: var(--ink); stroke-width: 2; }
+.tip { position: absolute; top: 0; pointer-events: none; background: var(--surface); border: 1px solid var(--border); box-shadow: 0 6px 24px rgba(0,0,0,.14); border-radius: 10px; padding: 8px 10px; font-size: 12.5px; min-width: 150px; z-index: 5; display: none; }
+.tip .t { font-weight: 700; margin-bottom: 4px; color: var(--ink-2); }
+.tip .r { display: grid; grid-template-columns: 14px 1fr auto; gap: 6px; align-items: center; line-height: 1.5; }
+.tip .r .k { height: 2px; border-radius: 2px; }
+.tip .r .n { color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+.tip .r .v { font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); }
+details.table { margin-top: 12px; font-size: 13px; }
+details.table summary { cursor: pointer; color: var(--ink-2); font-weight: 600; }
+.tscroll { overflow-x: auto; margin-top: 8px; }
+table { border-collapse: collapse; font-variant-numeric: tabular-nums; white-space: nowrap; }
+th, td { padding: 4px 8px; text-align: right; border-bottom: 1px solid var(--grid); }
+th:first-child, td:first-child { text-align: left; position: sticky; left: 0; background: var(--surface); max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+th { color: var(--ink-2); font-weight: 600; }
+
+/* footer */
+.how p { margin: 0 0 10px; color: var(--ink-2); font-size: 14px; }
+.how p:last-child { margin-bottom: 0; }
+footer { text-align: center; color: var(--muted); font-size: 12.5px; margin-top: 22px; }
+footer a { color: inherit; }
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div id="mock" class="mock hidden">PREVIEW WITH MADE-UP NUMBERS · not your real league data</div>
+<header class="mast">
+  <div class="wrap">
+    <div class="league" id="league"></div>
+    <h1>🌭 The Hotdog Tracker</h1>
+    <div class="rule">Last place after Week <span id="regWeeks">14</span> eats <b>70 hot dogs</b> in 3 weeks. Here are everyone's odds, updated every morning.</div>
+    <div class="updated" id="updated"></div>
+  </div>
+  <svg class="squiggle" viewBox="0 0 400 20" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M0 10 Q 10 2 20 10 T 40 10 T 60 10 T 80 10 T 100 10 T 120 10 T 140 10 T 160 10 T 180 10 T 200 10 T 220 10 T 240 10 T 260 10 T 280 10 T 300 10 T 320 10 T 340 10 T 360 10 T 380 10 T 400 10" fill="none" stroke="#e34948" stroke-width="4" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+  </svg>
+</header>
+
+<main class="wrap">
+  <section class="card hero" id="hero">
+    <div class="eyebrow" id="heroEyebrow">Most likely to eat 70 hot dogs</div>
+    <div class="hero-row">
+      <div>
+        <div class="hero-team" id="heroTeam"></div>
+        <div class="hero-meta" id="heroMeta"></div>
+      </div>
+      <div class="hero-num" id="heroNum"></div>
+    </div>
+    <div class="meter" role="img" id="heroMeter"><span></span></div>
+    <div class="facts" id="facts"></div>
+  </section>
+
+  <section class="card" id="plateCard">
+    <h2>The plate</h2>
+    <p class="sub">All 70 hot dogs, split up by today's odds. Each hot dog is about a 1-in-70 chance of being the one stuck eating them.</p>
+    <div class="plate" id="plate" role="img"></div>
+    <div class="legend" id="plateLegend"></div>
+  </section>
+
+  <section class="card">
+    <h2>Hotdog standings</h2>
+    <p class="sub">Chance of finishing last after Week <span class="rw">14</span>. Tap a team for what this week's game means for them.</p>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="card" id="weekCard">
+    <h2 id="weekTitle">This week's matchups</h2>
+    <p class="sub">How each team's odds move with a win or a loss. The game with the most at stake is the Hotdog Bowl.</p>
+    <div class="matchups" id="matchups"></div>
+  </section>
+
+  <section class="card" id="trendCard">
+    <h2>How the odds have moved</h2>
+    <p class="sub">Each team's chance of finishing last, as it stood after each week.</p>
+    <div class="legend" id="trendLegend" style="margin: 0 0 10px"></div>
+    <div class="chart-wrap" id="chart"><div class="tip" id="tip"></div></div>
+    <details class="table"><summary>Show the numbers</summary><div class="tscroll" id="trendTable"></div></details>
+  </section>
+
+  <section class="card how">
+    <h2>How the odds work</h2>
+    <p>Every morning this page pulls the standings and schedule from ESPN and plays out the rest of the regular season <b id="simCount">20,000</b> times. Each team's weekly score is based on what it has scored so far, with the last four weeks counting double, and pulled slightly toward the league average because fantasy scoring is so random. During a live week, ESPN's live projections are used for that week.</p>
+    <p>Whoever has the worst record after Week <span class="rw">14</span> eats the hot dogs. A tie goes to head-to-head record among the tied teams, then to fewest total points. A team's percentage is how often it finished last across all those simulated seasons. "Mathematically safe" means it can't finish last even if it loses every remaining game.</p>
+  </section>
+
+  <footer>Not affiliated with ESPN · <a href="data.json">raw numbers</a> · refreshes daily</footer>
+</main>
+
+<script>
+const DATA = /*__HOTDOG_DATA__*/null;
+
+(function () {
+  if (!DATA) { document.body.textContent = "No data yet."; return; }
+  const $ = (id) => document.getElementById(id);
+  const SVGNS = "http://www.w3.org/2000/svg";
+  const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+  const svg = (tag, attrs) => { const n = document.createElementNS(SVGNS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); return n; };
+  const fmtPct = (p) => p == null ? "–" : p <= 0 ? "0%" : p < 0.005 ? "<1%" : p >= 1 ? "100%" : p > 0.995 ? ">99%" : Math.round(p * 100) + "%";
+  const rec = (t) => `${t.wins}-${t.losses}${t.ties ? "-" + t.ties : ""}`;
+  const pts = (x) => x.toLocaleString(undefined, { maximumFractionDigits: 1, minimumFractionDigits: 1 });
+  const byId = Object.fromEntries(DATA.teams.map((t) => [t.id, t]));
+  const W = DATA.week, RW = DATA.league.regWeeks, FINAL = DATA.phase === "final";
+
+  // the top four teams get a color that follows them across the plate, the list and the chart
+  const SLOTS = ["var(--s1)", "var(--s2)", "var(--s3)", "var(--s4)"];
+  const color = {};
+  DATA.teams.filter((t) => t.pLast > 0).slice(0, 4).forEach((t, i) => (color[t.id] = SLOTS[i]));
+  const colorOf = (id) => color[id] || "var(--other)";
+
+  // 70 hot dogs split by odds (largest remainder so it always adds to 70)
+  const DOGS = 70;
+  const raw = DATA.teams.map((t) => ({ id: t.id, x: t.pLast * DOGS }));
+  raw.forEach((r) => (r.n = Math.floor(r.x)));
+  let left = DOGS - raw.reduce((s, r) => s + r.n, 0);
+  [...raw].sort((a, b) => (b.x - b.n) - (a.x - a.n)).forEach((r) => { if (left > 0 && r.x > 0) { r.n++; left--; } });
+  const dogsOf = Object.fromEntries(raw.map((r) => [r.id, r.n]));
+
+  // ---------------- masthead
+  if (DATA.mock) $("mock").classList.remove("hidden");
+  $("league").textContent = `${DATA.league.name} · ${DATA.league.season || ""} season`;
+  $("regWeeks").textContent = RW;
+  document.querySelectorAll(".rw").forEach((n) => (n.textContent = RW));
+  $("simCount").textContent = DATA.sims.toLocaleString();
+  const upd = new Date(DATA.updated);
+  $("updated").textContent = "Updated " + upd.toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short" });
+
+  // ---------------- hero
+  const top = DATA.teams[0];
+  if (FINAL) $("heroEyebrow").textContent = "Final verdict · eats 70 hot dogs";
+  $("heroTeam").textContent = top.name;
+  $("heroMeta").textContent = [top.owner, rec(top), pts(top.pf) + " pts"].filter(Boolean).join(" · ");
+  $("heroNum").textContent = fmtPct(top.pLast);
+  const small = el("small", null, FINAL ? "it's official" : "chance of last");
+  $("heroNum").appendChild(small);
+  $("heroMeter").firstElementChild.style.width = (top.pLast * 100).toFixed(1) + "%";
+  $("heroMeter").setAttribute("aria-label", `${top.name}: ${fmtPct(top.pLast)} chance of finishing last`);
+  const facts = $("facts");
+  const fact = (txt, cls) => facts.appendChild(el("span", "fact" + (cls ? " " + cls : ""), txt));
+  if (DATA.live) fact(`Week ${W} live`, "live");
+  if (!FINAL) fact(`📅 Week ${W} of ${RW} · ${DATA.weeksLeft} ${DATA.weeksLeft === 1 ? "week" : "weeks"} left`);
+  fact("🌭 70 hot dogs");
+  fact("🗓️ 21 days");
+  fact("🍽️ 3⅓ a day");
+  const second = DATA.teams[1];
+  if (second && !FINAL) fact(`🥈 Next up: ${second.name} (${fmtPct(second.pLast)})`);
+
+  // ---------------- plate
+  const plate = $("plate");
+  const order = DATA.teams.filter((t) => dogsOf[t.id] > 0);
+  const tip = $("tip");
+  let dogIdx = 0;
+  order.forEach((t) => {
+    for (let k = 0; k < dogsOf[t.id]; k++) {
+      const s = svg("svg", { viewBox: "0 0 40 20", class: "dog", tabindex: dogIdx === 0 ? "0" : "-1", role: "presentation" });
+      s.appendChild(svg("rect", { x: 4, y: 6, width: 32, height: 12, rx: 6, style: "fill:var(--bun)" }));
+      s.appendChild(svg("rect", { x: 1, y: 7.5, width: 38, height: 6, rx: 3, style: `fill:${colorOf(t.id)}` }));
+      const title = svg("title", {}); title.textContent = `${t.name}: ${dogsOf[t.id]} of 70`; s.appendChild(title);
+      plate.appendChild(s);
+      dogIdx++;
+    }
+  });
+  plate.setAttribute("aria-label", order.map((t) => `${t.name} ${dogsOf[t.id]}`).join(", ") + " of 70 hot dogs");
+  const pl = $("plateLegend");
+  let otherDogs = 0, otherTeams = 0;
+  order.forEach((t) => {
+    if (color[t.id]) {
+      const it = el("span", "item");
+      const sw = el("span", "sw"); sw.style.background = color[t.id];
+      it.append(sw, el("b", null, String(dogsOf[t.id])), el("span", null, t.name));
+      pl.appendChild(it);
+    } else { otherDogs += dogsOf[t.id]; otherTeams++; }
+  });
+  if (otherDogs) {
+    const it = el("span", "item");
+    const sw = el("span", "sw"); sw.style.background = "var(--other)";
+    it.append(sw, el("b", null, String(otherDogs)), el("span", "dim", `${otherTeams} other ${otherTeams === 1 ? "team" : "teams"}`));
+    pl.appendChild(it);
+  }
+
+  // ---------------- standings
+  const rows = $("rows");
+  DATA.teams.forEach((t, i) => {
+    const li = el("li", "row");
+    li.tabIndex = 0;
+    li.setAttribute("aria-expanded", "false");
+    li.appendChild(el("div", "rank", String(i + 1)));
+    const who = el("div", "who");
+    const nm = el("div", "name");
+    if (color[t.id]) { const k = el("span", "key"); k.style.background = color[t.id]; nm.appendChild(k); }
+    nm.appendChild(document.createTextNode(t.name));
+    who.appendChild(nm);
+    who.appendChild(el("div", "meta", [t.owner, rec(t), pts(t.pf) + " pts"].filter(Boolean).join(" · ")));
+    let chipTxt, chipCls = "";
+    if (t.status === "doomed") { chipTxt = "🌭 Clinched last place"; chipCls = "doomed"; }
+    else if (t.status === "safe") { chipTxt = "✅ Mathematically safe"; chipCls = "safe"; }
+    else if (t.pLast >= 0.995) chipTxt = "🌭 All but clinched";
+    else if (t.pLast >= 0.25) chipTxt = "🔥 Danger zone";
+    else if (t.pLast >= 0.08) chipTxt = "😬 Sweating";
+    else if (t.pLast >= 0.01) chipTxt = "🙂 Breathing room";
+    else chipTxt = "😎 Nearly safe";
+    who.appendChild(el("span", "chip " + chipCls, chipTxt));
+    li.appendChild(who);
+    const odds = el("div", "odds");
+    odds.appendChild(el("div", "pct", fmtPct(t.pLast)));
+    const bar = el("div", "bar"); const fill = el("span"); fill.style.width = (t.pLast * 100).toFixed(1) + "%"; bar.appendChild(fill);
+    odds.appendChild(bar);
+    odds.appendChild(el("div", "dogs", dogsOf[t.id] ? `🌭 ${dogsOf[t.id]} of 70` : "🌭 0"));
+    li.appendChild(odds);
+    const det = el("div", "detail hidden");
+    const line = (label, value) => { const d = el("div"); d.appendChild(document.createTextNode(label + " ")); d.appendChild(el("b", null, value)); det.appendChild(d); };
+    if (t.nextOpp != null && byId[t.nextOpp] && !FINAL) {
+      line(`Week ${W}:`, `vs ${byId[t.nextOpp].name}`);
+      if (t.ifWin != null && t.ifLose != null) line("Chance of last if they win:", `${fmtPct(t.ifWin)} · if they lose: ${fmtPct(t.ifLose)}`);
+    }
+    line("Scoring model:", `${t.weeklyAvg} pts a week`);
+    if (!FINAL) line("Projected final record:", `${t.projWins.toFixed(1)} wins (${t.remaining} games left)`);
+    li.appendChild(det);
+    const toggle = () => { const open = det.classList.toggle("hidden") === false; li.setAttribute("aria-expanded", String(open)); };
+    li.addEventListener("click", toggle);
+    li.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } });
+    rows.appendChild(li);
+  });
+
+  // ---------------- this week's matchups
+  if (FINAL || !DATA.matchups.length) $("weekCard").classList.add("hidden");
+  else {
+    $("weekTitle").textContent = `Week ${W} matchups`;
+    const box = $("matchups");
+    DATA.matchups.forEach((m, i) => {
+      const card = el("div", "mu" + (i === 0 && m.stakes >= 0.05 ? " bowl" : ""));
+      if (i === 0 && m.stakes >= 0.05) card.appendChild(el("div", "badge", "🌭 Hotdog Bowl"));
+      const g = el("div", "mu-grid");
+      const side = (s, right) => {
+        const t = byId[s.id];
+        const d = el("div", "side" + (right ? " right" : ""));
+        d.appendChild(el("div", "tn", t.name));
+        d.appendChild(el("div", "now", `${fmtPct(s.pLast)} now · ${rec(t)}`));
+        if (DATA.live) {
+          const sc = el("div", "score", pts(s.score));
+          sc.appendChild(el("small", null, ` / ${pts(s.proj)} proj`));
+          d.appendChild(sc);
+        }
+        const o = el("div", "outcomes");
+        const row = (label, v, cls) => { const r = el("div"); r.appendChild(el("span", null, label + " ")); r.appendChild(el("b", cls, fmtPct(v))); o.appendChild(r); };
+        row("Win →", s.ifWin, s.ifWin < s.pLast - 0.0049 ? "down" : null);
+        row("Lose →", s.ifLose, s.ifLose > s.pLast + 0.0049 ? "up" : null);
+        d.appendChild(o);
+        return d;
+      };
+      g.append(side(m.home, false), el("div", "mu-vs", "VS"), side(m.away, true));
+      card.appendChild(g);
+      box.appendChild(card);
+    });
+  }
+
+  // ---------------- trend chart
+  const H = DATA.history;
+  if (!H.labels.length) { $("trendCard").classList.add("hidden"); return; }
+  const legend = $("trendLegend");
+  const hl = DATA.teams.filter((t) => color[t.id]);
+  hl.forEach((t) => { const it = el("span", "item"); const ln = el("span", "ln"); ln.style.background = color[t.id]; it.append(ln, el("span", null, t.name)); legend.appendChild(it); });
+  if (DATA.teams.length > hl.length) { const it = el("span", "item"); const ln = el("span", "ln"); ln.style.background = "var(--other)"; it.append(ln, el("span", "dim", "Everyone else")); legend.appendChild(it); }
+
+  // table view
+  const tbl = el("table"); const thead = el("tr"); thead.appendChild(el("th", null, "Team"));
+  H.labels.forEach((l) => thead.appendChild(el("th", null, l))); tbl.appendChild(thead);
+  DATA.teams.forEach((t) => { const tr = el("tr"); tr.appendChild(el("td", null, t.name)); H.series[t.id].forEach((v) => tr.appendChild(el("td", null, fmtPct(v)))); tbl.appendChild(tr); });
+  $("trendTable").appendChild(tbl);
+
+  const wrap = $("chart");
+  function draw() {
+    wrap.querySelectorAll("svg").forEach((n) => n.remove());
+    const width = wrap.clientWidth, height = 240;
+    const m = { l: 40, r: width > 520 ? 160 : 14, t: 10, b: 26 };
+    const iw = width - m.l - m.r, ih = height - m.t - m.b;
+    const n = H.labels.length;
+    const maxV = Math.max(0.1, ...DATA.teams.map((t) => Math.max(...H.series[t.id])));
+    const step = maxV > 0.6 ? 0.25 : maxV > 0.3 ? 0.1 : 0.05;
+    const yMax = Math.min(1, Math.ceil(maxV / step) * step);
+    const x = (i) => m.l + (n === 1 ? iw / 2 : (i * iw) / (n - 1));
+    const y = (v) => m.t + ih - (v / yMax) * ih;
+    const s = svg("svg", { viewBox: `0 0 ${width} ${height}`, height, role: "img", "aria-label": "Chance of finishing last by week; numbers are in the table below" });
+    for (let v = 0; v <= yMax + 1e-9; v += step) {
+      s.appendChild(svg("line", { x1: m.l, x2: width - m.r, y1: y(v), y2: y(v), style: `stroke:${v === 0 ? "var(--axis)" : "var(--grid)"};stroke-width:1` }));
+      const tx = svg("text", { x: m.l - 8, y: y(v) + 4, "text-anchor": "end", style: "fill:var(--muted);font-size:11px;font-variant-numeric:tabular-nums" });
+      tx.textContent = Math.round(v * 100) + "%"; s.appendChild(tx);
+    }
+    const every = Math.max(1, Math.ceil(n / Math.max(2, Math.floor(iw / 44))));
+    H.labels.forEach((l, i) => {
+      if (i % every && i !== n - 1) return;
+      const tx = svg("text", { x: x(i), y: height - 6, "text-anchor": "middle", style: "fill:var(--muted);font-size:11px" });
+      tx.textContent = n > 8 ? l.replace("Wk ", "") : l; s.appendChild(tx);
+    });
+    const path = (vals) => vals.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join("");
+    const others = DATA.teams.filter((t) => !color[t.id]);
+    others.forEach((t) => s.appendChild(svg("path", { d: path(H.series[t.id]), style: "fill:none;stroke:var(--other);stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round" })));
+    [...hl].reverse().forEach((t) => s.appendChild(svg("path", { d: path(H.series[t.id]), style: `fill:none;stroke:${color[t.id]};stroke-width:2;stroke-linejoin:round;stroke-linecap:round` })));
+    hl.forEach((t) => { const v = H.series[t.id][n - 1]; s.appendChild(svg("circle", { cx: x(n - 1), cy: y(v), r: 4, style: `fill:${color[t.id]};stroke:var(--surface);stroke-width:2` })); });
+    // direct end labels on wide screens, skipped where they would collide
+    if (m.r > 100) {
+      let lastY = -99;
+      [...hl].sort((a, b) => H.series[b.id][n - 1] - H.series[a.id][n - 1]).forEach((t) => {
+        const yy = y(H.series[t.id][n - 1]);
+        if (yy - lastY < 14) return;
+        lastY = yy;
+        const tx = svg("text", { x: x(n - 1) + 10, y: yy + 4, style: "fill:var(--ink-2);font-size:12px" });
+        tx.textContent = (t.name.length > 15 ? t.name.slice(0, 14) + "…" : t.name) + " " + fmtPct(H.series[t.id][n - 1]);
+        s.appendChild(tx);
+      });
+    }
+    const cross = svg("line", { y1: m.t, y2: m.t + ih, style: "stroke:var(--axis);stroke-width:1;display:none" });
+    s.appendChild(cross);
+    const ov = svg("rect", { x: m.l - 10, y: 0, width: iw + 20, height, class: "overlay", tabindex: 0, style: "fill:transparent" });
+    s.appendChild(ov);
+    let cur = -1;
+    const show = (i) => {
+      cur = Math.max(0, Math.min(n - 1, i));
+      cross.setAttribute("x1", x(cur)); cross.setAttribute("x2", x(cur)); cross.style.display = "";
+      tip.textContent = "";
+      tip.appendChild(el("div", "t", H.labels[cur] === "Live" ? `Live · Week ${W}` : `After ${H.labels[cur].replace("Wk", "Week")}`));
+      [...DATA.teams].sort((a, b) => H.series[b.id][cur] - H.series[a.id][cur]).forEach((t) => {
+        const r = el("div", "r"); const k = el("span", "k"); k.style.background = colorOf(t.id);
+        r.append(k, el("span", "n", t.name), el("span", "v", fmtPct(H.series[t.id][cur]))); tip.appendChild(r);
+      });
+      tip.style.display = "block";
+      const tw = tip.offsetWidth; let left = x(cur) + 12; if (left + tw > width) left = x(cur) - tw - 12; if (left < 0) left = 0;
+      tip.style.left = left + "px"; tip.style.top = "0px";
+    };
+    const hide = () => { cross.style.display = "none"; tip.style.display = "none"; };
+    const idxAt = (evt) => { const r = s.getBoundingClientRect(); const px = ((evt.clientX - r.left) / r.width) * width; return n === 1 ? 0 : Math.round(((px - m.l) / iw) * (n - 1)); };
+    ov.addEventListener("pointermove", (e) => show(idxAt(e)));
+    ov.addEventListener("pointerdown", (e) => show(idxAt(e)));
+    ov.addEventListener("pointerleave", hide);
+    ov.addEventListener("focus", () => show(n - 1));
+    ov.addEventListener("blur", hide);
+    ov.addEventListener("keydown", (e) => { if (e.key === "ArrowLeft") { e.preventDefault(); show(cur - 1); } if (e.key === "ArrowRight") { e.preventDefault(); show(cur + 1); } if (e.key === "Escape") hide(); });
+    wrap.insertBefore(s, tip);
+  }
+  draw();
+  let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(draw, 120); });
+})();
+</script>
+</body>
+</html>
