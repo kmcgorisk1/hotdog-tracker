@@ -224,8 +224,8 @@ def side_dist(mean, sd, live_pts, proj):
     return mean, sd
 
 
-def simulate(league, upto_week=None, n_sims=SIMS, seed=1, use_live=True):
-    """Simulate unfinished regular-season games and count who finishes last.
+def setup(league, upto_week=None, use_live=True):
+    """Split the schedule into finished results and games still to simulate.
 
     upto_week: pretend only games through this week are finished (for the trend chart).
     """
@@ -261,6 +261,16 @@ def simulate(league, upto_week=None, n_sims=SIMS, seed=1, use_live=True):
             remaining.append((i, j, mi, si, mj, sj, g["week"]))
             rem_n[i] += 1
             rem_n[j] += 1
+    return {"tids": tids, "base_w": base_w, "base_pf": base_pf, "rem_n": rem_n,
+            "played": played, "remaining": remaining, "means": means, "sd": sd}
+
+
+def simulate(league, upto_week=None, n_sims=SIMS, seed=1, use_live=True):
+    """Simulate unfinished regular-season games and count who finishes last."""
+    s = setup(league, upto_week, use_live)
+    tids, base_w, base_pf, rem_n = s["tids"], s["base_w"], s["base_pf"], s["rem_n"]
+    played, remaining, means, sd = s["played"], s["remaining"], s["means"], s["sd"]
+    T = len(tids)
 
     swing_week = min((r[6] for r in remaining), default=None)
     rng = random.Random(seed)
@@ -376,6 +386,29 @@ def build(league, is_mock):
         else:
             h["t"] += 1; a["t"] += 1
 
+    # recent results and weekly scores for each team
+    form = {tid: [] for tid in teams}
+    scores = {tid: [] for tid in teams}
+    for g in sorted((g for g in games if g["done"]), key=lambda g: g["week"]):
+        hr = "W" if g["winner"] == "HOME" else "L" if g["winner"] == "AWAY" else "T"
+        form[g["home"]].append(hr)
+        form[g["away"]].append({"W": "L", "L": "W", "T": "T"}[hr])
+        scores[g["home"]].append(round(g["hs"], 1))
+        scores[g["away"]].append(round(g["as"], 1))
+    every_score = [p for v in scores.values() for p in v]
+    league_avg = round(sum(every_score) / len(every_score), 1) if every_score else None
+
+    # everything the page needs to re-run the season in the browser for "what if" picks
+    m = setup(league)
+    model = {
+        "ids": m["tids"],
+        "w": m["base_w"],
+        "pf": [round(x, 1) for x in m["base_pf"]],
+        "played": [[i, j, wi] for i, j, wi in m["played"]],
+        "games": [[i, j, round(mi, 1), round(si, 1), round(mj, 1), round(sj, 1), wk]
+                  for i, j, mi, si, mj, sj, wk in m["remaining"]],
+    }
+
     # this week's matchups
     matchups = []
     for g in games:
@@ -415,6 +448,7 @@ def build(league, is_mock):
             "ifLose": None if o["ifLose"] is None else round(o["ifLose"], 4),
             "status": status, "remaining": o["remaining"],
             "nextOpp": next_opp.get(tid), "weeklyAvg": round(means[tid], 1),
+            "form": form[tid][-5:], "scores": scores[tid],
         })
     rows.sort(key=lambda r: (-r["pLast"], r["wins"] + 0.5 * r["ties"], r["pf"]))
 
@@ -434,6 +468,8 @@ def build(league, is_mock):
         "history": {"labels": history_labels,
                     "series": {str(tid): vals for tid, vals in history.items()}},
         "matchups": matchups,
+        "leagueAvg": league_avg,
+        "model": model,
         "mock": is_mock,
     }
 
