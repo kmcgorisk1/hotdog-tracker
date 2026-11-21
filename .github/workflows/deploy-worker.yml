@@ -1,0 +1,30 @@
+name: Deploy live scores relay
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "worker/**"
+      - "wrangler.toml"
+      - ".github/workflows/deploy-worker.yml"
+  workflow_dispatch:        # adds a "Run workflow" button, e.g. after updating the ESPN cookies
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the relay files
+        uses: actions/checkout@v6
+
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy
+          secrets: |
+            ESPN_S2
+            ESPN_SWID
+        env:
+          ESPN_S2: ${{ secrets.ESPN_S2 }}
+          ESPN_SWID: ${{ secrets.ESPN_SWID }}
