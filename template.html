@@ -332,6 +332,7 @@ details.nums summary { cursor: pointer; color: var(--ink-2); font-weight: 600; }
     <summary>How the odds work</summary>
     <p>Every morning this page pulls the standings and schedule from ESPN and plays out the rest of the regular season <span id="simCount">20,000</span> times. Each team's weekly score is based on what it has scored so far, with the last four weeks counting double, pulled slightly toward the league average because fantasy scoring is so random. During a live week, ESPN's live projections are used for that week.</p>
     <p>The worst record after Week <span class="rw">14</span> eats the hot dogs. A tie goes to head-to-head record among the tied teams, then to fewest total points. A team's percentage is how often it finished last across all those simulated seasons. "Mathematically safe" means a team can't finish last even if it loses every remaining game.</p>
+    <p>While games are on, the page checks for live scores about once a minute and re-runs 10,000 seasons in your browser using ESPN's live projections, so the odds move with the games. The full update with records and history still runs every morning.</p>
     <p>When you pick winners, your browser re-runs 10,000 seasons with those results locked in. Nothing you pick changes the page for anyone else unless you send them your link.</p>
   </details>
 </main>
@@ -364,13 +365,17 @@ const DATA = /*__HOTDOG_DATA__*/null;
   const W = DATA.week, RW = DATA.league.regWeeks;
   const TEAMS = DATA.teams;
   const byId = Object.fromEntries(TEAMS.map((t) => [t.id, t]));
-  const H = DATA.history, HN = H.labels.length;
+  const H = DATA.history;
+  let HN = H.labels.length;
   const M = DATA.model && DATA.model.games && DATA.model.games.length ? DATA.model : null;
   const OFFICIAL = Object.fromEntries(TEAMS.map((t) => [t.id, t.pLast]));
-  const prevIdx = HN >= 2 ? HN - 2 : -1;
-  const prevWeekName = prevIdx >= 0 ? H.labels[prevIdx].replace("Wk ", "Week ") : null;
+  let prevIdx = HN >= 2 ? HN - 2 : -1;
+  let prevWeekName = prevIdx >= 0 ? H.labels[prevIdx].replace("Wk ", "Week ") : null;
   const weekDelta = (id) => prevIdx >= 0 ? H.series[id][HN - 1] - H.series[id][prevIdx] : null;
   const SIMS_JS = 10000;
+  // Live scores relay (Cloudflare Worker). The page polls it about once a minute while open.
+  const LIVE_URL = "https://hotdog-live.kmcgorisk1.workers.dev/live";
+  const LIVE_ON = /^https:\/\/[^/]+\/live$/.test(LIVE_URL) && LIVE_URL.indexOf("SUBDOMAIN") < 0;
 
   // games still to play, with stable keys for picks and links
   const GAMES = M ? M.games.map((g) => {
@@ -384,7 +389,8 @@ const DATA = /*__HOTDOG_DATA__*/null;
   const BOWL = DATA.matchups && DATA.matchups[0] && DATA.matchups[0].stakes >= 0.05 ? W + "." + DATA.matchups[0].home.id + "." + DATA.matchups[0].away.id : null;
 
   const state = { selected: TEAMS[0].id, sort: "odds", picks: new Map(), scen: null, tab: WEEKS[0], open: false, served: false };
-  const odds = (id) => state.scen ? state.scen[id] : OFFICIAL[id];
+  const BASE = (id) => state.liveOdds ? state.liveOdds[id] : OFFICIAL[id];
+  const odds = (id) => state.scen ? state.scen[id] : BASE(id);
 
   // ---------------- in-browser simulation for picks (mirrors tracker.py)
   function runSim(picks, n) {
@@ -473,7 +479,7 @@ const DATA = /*__HOTDOG_DATA__*/null;
 
   // ---------------- sorting
   const SORTS = [["odds", "Odds"], ["record", "Record"], ["points", "Points"], ["movers", "Movers"]];
-  const moverDelta = (id) => state.scen ? state.scen[id] - OFFICIAL[id] : weekDelta(id);
+  const moverDelta = (id) => state.scen ? state.scen[id] - BASE(id) : weekDelta(id);
   function sortedBy(key) {
     const list = [...TEAMS];
     const wpct = (t) => t.wins + 0.5 * t.ties;
@@ -500,8 +506,9 @@ const DATA = /*__HOTDOG_DATA__*/null;
     const st = $("status");
     const upd = new Date(DATA.updated);
     const hrs = Math.max(0, Math.round((Date.now() - upd) / 36e5));
-    st.className = "status" + (DATA.live ? " live" : "");
-    st.textContent = DATA.live ? "Week " + W + " live" : FINAL ? "Final standings" : hrs < 1 ? "Updated just now" : "Updated " + hrs + (hrs === 1 ? " hour" : " hours") + " ago";
+    st.className = "status" + (DATA.live || state.liveAt ? " live" : "");
+    st.textContent = state.liveAt ? "Live as of " + state.liveAt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
+      : DATA.live ? "Week " + W + " live" : FINAL ? "Final standings" : hrs < 1 ? "Updated just now" : "Updated " + hrs + (hrs === 1 ? " hour" : " hours") + " ago";
     st.title = "Updated " + upd.toLocaleString();
     $("updated").textContent = "Last updated " + upd.toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
     $("simCount").textContent = DATA.sims.toLocaleString();
@@ -651,7 +658,7 @@ const DATA = /*__HOTDOG_DATA__*/null;
     bar.hidden = !state.scen;
     if (state.scen) {
       bar.textContent = "";
-      bar.append(el("span", null, "Showing your " + state.picks.size + " " + plural(state.picks.size, "pick", "picks") + ". Arrows compare with today's odds."), el("span", "spacer"));
+      bar.append(el("span", null, "Showing your " + state.picks.size + " " + plural(state.picks.size, "pick", "picks") + ". Arrows compare with the current odds."), el("span", "spacer"));
       const rb = el("button", "btn ghost small", "Reset picks"); rb.type = "button"; rb.addEventListener("click", () => { state.picks.clear(); recompute(); });
       bar.append(rb);
     }
@@ -667,7 +674,8 @@ const DATA = /*__HOTDOG_DATA__*/null;
       r.querySelector(".br i").style.width = (odds(t.id) * 100).toFixed(1) + "%";
       const dw = r.querySelector(".dlw");
       dw.textContent = "";
-      dw.append(state.scen ? deltaEl(state.scen[t.id] - OFFICIAL[t.id], "compared with today's odds") : deltaEl(weekDelta(t.id), prevWeekName ? "since " + prevWeekName : ""));
+      r.querySelector(".sp").replaceChildren(sparkline(t.id));
+      dw.append(state.scen ? deltaEl(state.scen[t.id] - BASE(t.id), "compared with the current odds") : deltaEl(weekDelta(t.id), prevWeekName ? "since " + prevWeekName : ""));
       r.classList.toggle("sel", t.id === state.selected);
       r.setAttribute("aria-label", t.name + ", " + fmt(odds(t.id)) + " chance of finishing last");
       list.appendChild(r);
@@ -796,6 +804,19 @@ const DATA = /*__HOTDOG_DATA__*/null;
     box.append(det);
   }
 
+  const swingCache = {};
+  function swingFor(t, g) {
+    if (!g || (!state.liveOdds && !state.scen)) return [t.ifWin, t.ifLose];
+    const side = g.home === t.id ? "h" : "a", other = side === "h" ? "a" : "h";
+    const key = (state.liveAt ? +state.liveAt : 0) + "|" + t.id + "|" + pickString();
+    if (!swingCache[key]) {
+      const win = new Map(state.picks); win.set(g.key, side);
+      const lose = new Map(state.picks); lose.set(g.key, other);
+      swingCache[key] = [runSim(win, SIMS_JS)[t.id], runSim(lose, SIMS_JS)[t.id]];
+    }
+    return swingCache[key];
+  }
+
   function renderPanel() {
     const t = byId[state.selected];
     panel.textContent = "";
@@ -814,7 +835,7 @@ const DATA = /*__HOTDOG_DATA__*/null;
 
     const po = el("div", "p-odds");
     po.append(el("span", "big num", fmt(odds(t.id))), el("span", "lbl", FINAL ? (odds(t.id) >= 1 ? "finished last" : "off the hook") : state.scen ? "chance of last with your picks" : "chance of finishing last"));
-    const d = state.scen ? deltaEl(state.scen[t.id] - OFFICIAL[t.id], "compared with today's odds") : deltaEl(weekDelta(t.id), prevWeekName ? "since " + prevWeekName : "");
+    const d = state.scen ? deltaEl(state.scen[t.id] - BASE(t.id), "compared with the current odds") : deltaEl(weekDelta(t.id), prevWeekName ? "since " + prevWeekName : "");
     if (d.textContent && d.textContent !== "–") { d.textContent += state.scen ? " vs today" : prevWeekName ? " since " + prevWeekName : ""; po.append(d); }
     panel.append(po);
 
@@ -827,11 +848,11 @@ const DATA = /*__HOTDOG_DATA__*/null;
       sec.append(el("h3", null, "Week " + W + " vs " + byId[t.nextOpp].name));
       const sw = el("div", "swing");
       const line = (label, v) => { const b = el("span", "bar"); const i = el("i"); i.style.width = ((v || 0) * 100).toFixed(1) + "%"; b.append(i); sw.append(el("span", null, label), b, el("span", "v num", fmt(v))); };
-      line("If they win", t.ifWin);
-      line("If they lose", t.ifLose);
-      sec.append(sw);
-      if (state.scen) sec.append(el("p", "sub", "These two numbers are today's odds, before your picks."));
       const g = GAMES.find((g) => g.week === W && (g.home === t.id || g.away === t.id));
+      const [ifWin, ifLose] = swingFor(t, g);
+      line("If they win", ifWin);
+      line("If they lose", ifLose);
+      sec.append(sw);
       if (g) {
         const side = g.home === t.id ? "h" : "a", other = side === "h" ? "a" : "h";
         const acts = el("div", "p-actions");
@@ -895,7 +916,7 @@ const DATA = /*__HOTDOG_DATA__*/null;
     });
     const games = $("games");
     games.textContent = "";
-    if (state.tab === W && DATA.live) games.append(el("p", "sub hint", "Scores are live. The smaller number is ESPN's projected final."));
+    if (state.tab === W && (DATA.live || state.liveAt)) games.append(el("p", "sub hint", "Scores are live. The smaller number is ESPN's projected final."));
     const list = GAMES.filter((g) => g.week === state.tab);
     if (state.tab === W) list.sort((a, b) => (b.key === BOWL) - (a.key === BOWL));
     list.forEach((g) => {
@@ -909,7 +930,7 @@ const DATA = /*__HOTDOG_DATA__*/null;
         b.type = "button";
         b.setAttribute("aria-pressed", String(state.picks.get(g.key) === side));
         b.append(el("span", "pn", t.name));
-        if (live && DATA.live) {
+        if (live && (DATA.live || state.liveAt)) {
           const ls = side === "h" ? live.home : live.away;
           const sc = el("span", "sc num", pts(ls.score));
           const pr = el("small", null, " of " + pts(ls.proj)); pr.title = "ESPN's projected final score"; sc.append(pr);
@@ -937,11 +958,81 @@ const DATA = /*__HOTDOG_DATA__*/null;
     renderWhatIf();
   }
 
+  // ---------------- live scores: poll the relay, update this week's games, re-run the odds
+  const SPREAD = DATA.weeklySpread || 25;
+  function applyLive(feed) {
+    if (!feed || feed.week !== W || !Array.isArray(feed.games)) return false;
+    let used = false;
+    const dist = (pts, proj) => {
+      if (!(proj > 0)) return null;
+      const left = Math.min(1, Math.max(0.05, 1 - (pts || 0) / proj));
+      return [proj, SPREAD * Math.sqrt(left)];
+    };
+    feed.games.forEach((lg) => {
+      const key = W + "." + lg.home + "." + lg.away;
+      const g = GAME_BY_KEY[key];
+      if (!g) return;
+      const h = dist(lg.hs, lg.hp), a = dist(lg.as, lg.ap);
+      if (h) { g.mi = h[0]; g.si = h[1]; }
+      if (a) { g.mj = a[0]; g.sj = a[1]; }
+      const m = LIVE[key];
+      if (m) {
+        if (lg.hs != null) m.home.score = lg.hs;
+        if (lg.as != null) m.away.score = lg.as;
+        if (lg.hp) m.home.proj = lg.hp;
+        if (lg.ap) m.away.proj = lg.ap;
+      }
+      used = true;
+    });
+    return used;
+  }
+  function liveHistoryPoint() {
+    if (H.labels[HN - 1] !== "Live") {
+      H.labels.push("Live");
+      TEAMS.forEach((t) => H.series[t.id].push(state.liveOdds[t.id]));
+      HN = H.labels.length;
+      prevIdx = HN >= 2 ? HN - 2 : -1;
+      prevWeekName = prevIdx >= 0 ? H.labels[prevIdx].replace("Wk ", "Week ") : null;
+    } else {
+      TEAMS.forEach((t) => (H.series[t.id][HN - 1] = state.liveOdds[t.id]));
+    }
+  }
+  let pollTimer = null, quiet = 0, lastSig = "";
+  async function poll() {
+    clearTimeout(pollTimer);
+    if (!document.hidden) {
+      try {
+        const res = await fetch(LIVE_URL, { cache: "no-store" });
+        const feed = await res.json();
+        const sig = JSON.stringify(feed.games || []);
+        quiet = sig === lastSig ? quiet + 1 : 0;
+        if (sig !== lastSig && applyLive(feed)) {
+          lastSig = sig;
+          state.liveAt = new Date(feed.fetchedAt || Date.now());
+          state.liveOdds = runSim(new Map(), SIMS_JS);
+          liveHistoryPoint();
+          if (state.picks.size) state.scen = runSim(state.picks, SIMS_JS);
+          renderAll();
+        } else if (state.liveAt && feed.fetchedAt) {
+          state.liveAt = new Date(feed.fetchedAt);
+          renderTop();
+        }
+      } catch (e) {
+        quiet++;
+      }
+    }
+    pollTimer = setTimeout(poll, quiet >= 10 ? 300000 : 60000);
+  }
+
   readHash();
   if (state.picks.size) state.scen = runSim(state.picks, SIMS_JS);
   state.selected = sortedBy("odds")[0].id;
   renderAll();
-  window.__hotdog = { runSim: (p) => runSim(p || new Map(), SIMS_JS), state };
+  if (LIVE_ON && !FINAL && M && W) {
+    poll();
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
+  }
+  window.__hotdog = { runSim: (p) => runSim(p || new Map(), SIMS_JS), state, poll };
 })();
 </script>
 </body>
