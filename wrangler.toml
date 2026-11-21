@@ -1,0 +1,9 @@
+# Cloudflare Worker that relays live scores to the Hotdog Tracker page.
+# GitHub deploys it automatically (.github/workflows/deploy-worker.yml).
+name = "hotdog-live"
+main = "worker/index.js"
+compatibility_date = "2025-06-01"
+workers_dev = true
+
+[vars]
+LEAGUE_ID = "1363222657"
